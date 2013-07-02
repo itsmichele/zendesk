@@ -24,14 +24,10 @@ __author__ = "Max Gutman <max@eventbrite.com>"
 __version__ = "1.1.0"
 
 import re
-import httplib2
-import urllib
-import base64
-try:
-    import simplejson as json
-except:
-    import json
+import requests
 from httplib import responses
+import json
+import base64
 from endpoints import mapping_table as mapping_table_v1
 from endpoints_v2 import mapping_table as mapping_table_v2
 
@@ -116,13 +112,10 @@ class Zendesk(object):
                 'Content-Type': 'application/json'
             }
 
-        # Set http client and authentication
-        self.client = httplib2.Http(**client_args)
+        # Set http session and authentication
+        self.session = requests.Session()
         if self.zendesk_username is not None and self.zendesk_password is not None:
-            self.client.add_credentials(
-                self.zendesk_username,
-                self.zendesk_password
-            )
+            self.session.auth = (self.zendesk_username, self.zendesk_password)
 
         self.api_version = api_version
         if self.api_version == 1:
@@ -181,7 +174,6 @@ class Zendesk(object):
                                     "'%s'" % (api_call, kw))
             else:
                 clean_kwargs(kwargs)
-                url += '?' + urllib.urlencode(kwargs)
 
             # the 'search' endpoint in an open Zendesk site doesn't return a 401
             # to force authentication. Inject the credentials in the headers to
@@ -194,15 +186,16 @@ class Zendesk(object):
                 del(self.headers["Authorization"])
 
             # Make an http request (data replacements are finalized)
-            response, content = \
-                    self.client.request(
-                        url,
+            response = \
+                    self.session.request(
                         method,
-                        body=json.dumps(body),
+                        url,
+                        params=kwargs,
+                        data=json.dumps(body),
                         headers=self.headers
                     )
             # Use a response handler to determine success/fail
-            return self._response_handler(response, content, status)
+            return self._response_handler(response, status)
 
         # Missing method is also not defined in our mapping table
         if api_call not in self.mapping_table:
@@ -212,7 +205,7 @@ class Zendesk(object):
         return call.__get__(self)
 
     @staticmethod
-    def _response_handler(response, content, status):
+    def _response_handler(response, status):
         """ 
         Handle response as callback
 
@@ -224,17 +217,16 @@ class Zendesk(object):
         the body of 'content' has our response.
         """
         # Just in case
-        if not response:
-            raise ZendeskError('Response Not Found')
-        response_status = int(response.get('status', 0))
-        if response_status != status:
-            raise ZendeskError(content, response_status)
+        #if not response:
+        #    raise ZendeskError('Response Not Found')
+        if response.status_code != status:
+            raise ZendeskError(response.content, response.status_code)
 
         # Deserialize json content if content exist. In some cases Zendesk
         # returns ' ' strings. Also return false non strings (0, [], (), {})
-        if response.get('location'):
-            return response.get('location')
-        elif content.strip():
-            return json.loads(content)
+        if response.headers.get('location'):
+            return response.headers.get('location')
+        elif response.json():
+            return response.json()
         else:
-            return responses[response_status]
+            return responses[response.status_code]
