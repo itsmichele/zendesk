@@ -59,6 +59,18 @@ mapping_table = {
         'method': 'PUT',
     },
 
+    # Ticket Metrics
+    'list_metrics': {
+        'path': '/tickets/{{ticket_id}}/metrics.json',
+        'method': 'GET',
+    },
+
+    # Ticket Comments
+    'list_comments': {
+        'path': '/tickets/{{ticket_id}}/comments.json',
+        'method': 'GET',
+    },
+
     # Incremental Tickets
     'export_incremental_tickets': {
         'path': '/exports/tickets.json',
