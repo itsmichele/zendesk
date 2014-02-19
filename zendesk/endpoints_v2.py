@@ -65,7 +65,7 @@ mapping_table = {
         'method': 'GET',
     },
 
-    'list_metrics': {
+    'show_metrics': {
         'path': '/tickets/{{ticket_id}}/metrics.json',
         'method': 'GET',
     },
