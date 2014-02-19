@@ -64,6 +64,18 @@ def get_id_from_url(url):
         return match.group('identifier')
 
 
+def get_all_pages(get_page, key):
+    page = 1
+    all_data = []
+    while True:
+        page_data = get_page(page=page)
+        all_data.extend(page_data[key])
+        if page_data['next_page'] is None:
+            break
+        page += 1
+    return all_data
+    
+
 def clean_kwargs(kwargs):
     """Format the kwargs to conform to API"""
 
